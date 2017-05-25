@@ -130,8 +130,6 @@ void handleFormConfig(void)
   String response="";
   int ret ;
 
-  LedBluON();
-
   // We validated config ?
   if (server.hasArg("save"))
   {
@@ -203,7 +201,6 @@ void handleFormConfig(void)
   Debug(":"); 
   Debugln(response); 
   server.send ( ret, "text/plain", response);
-  LedBluOFF();
 }
 
 /* ======================================================================
@@ -215,9 +212,7 @@ Comments: -
 ====================================================================== */
 void handleRoot(void) 
 {
-  LedBluON();
   handleFileRead("/");
-  LedBluOFF();
 }
 
 /* ======================================================================
@@ -740,9 +735,6 @@ void handleNotFound(void)
   String response = "";
   boolean found = false;  
 
-  // Led on
-  LedBluON();
-
   // try to return SPIFFS file
   found = handleFileRead(server.uri());
 
@@ -805,8 +797,5 @@ void handleNotFound(void)
 
     server.send ( 404, "text/plain", message );
   }
-
-  // Led off
-  LedBluOFF();
 }
 

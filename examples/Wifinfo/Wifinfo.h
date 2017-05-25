@@ -33,7 +33,6 @@
 #include <Ticker.h>
 //#include <WebSocketsServer.h>
 //#include <Hash.h>
-#include <NeoPixelBus.h>
 #include <LibTeleinfo.h>
 #include <FS.h>
 
@@ -47,8 +46,8 @@ extern "C" {
 
 
 #define DEBUG
-#define DEBUG_SERIAL	Serial1
-#define DEBUG_SERIAL1	
+#define DEBUG_SERIAL	Serial
+//#define DEBUG_SERIAL1	
 
 #define WIFINFO_VERSION "1.0.1"
 
@@ -71,43 +70,6 @@ extern "C" {
 #define Debugflush  {}
 #endif
 
-#define BLINK_LED_MS   50 // 50 ms blink
-#define RGB_LED_PIN    14 
-#define RED_LED_PIN    12
-
-// value for HSL color
-// see http://www.workwithcolor.com/blue-color-hue-range-01.htm
-#define COLOR_RED             0
-#define COLOR_ORANGE         30
-#define COLOR_ORANGE_YELLOW  45
-#define COLOR_YELLOW         60
-#define COLOR_YELLOW_GREEN   90
-#define COLOR_GREEN         120
-#define COLOR_GREEN_CYAN    165
-#define COLOR_CYAN          180
-#define COLOR_CYAN_BLUE     210
-#define COLOR_BLUE          240
-#define COLOR_BLUE_MAGENTA  275
-#define COLOR_MAGENTA	      300
-#define COLOR_PINK		      350
-
-// GPIO 1 TX on board blue led
-#ifdef BLU_LED_PIN
-#define LedBluON()  {digitalWrite(BLU_LED_PIN, 0);}
-#define LedBluOFF() {digitalWrite(BLU_LED_PIN, 1);}
-#else
-#define LedBluON()  {}
-#define LedBluOFF() {}
-#endif
-// GPIO 12 red led
-#define LedRedON()  {digitalWrite(RED_LED_PIN, 1);}
-#define LedRedOFF() {digitalWrite(RED_LED_PIN, 0);}
-
-// Light off the RGB LED
-#ifndef RGB_LED_PIN
-#define LedRGBOFF() {}
-#define LedRGBON(x) {}
-#endif
 // sysinfo informations
 typedef struct 
 {
@@ -119,7 +81,6 @@ typedef struct
 extern ESP8266WebServer server;
 extern WiFiUDP OTA;
 extern TInfo tinfo;
-extern uint8_t rgb_brightness;
 extern unsigned long seconds;
 extern _sysinfo sysinfo;
 extern Ticker Tick_emoncms;

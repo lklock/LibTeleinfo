@@ -31,7 +31,6 @@
 #include <Ticker.h>
 //#include <WebSocketsServer.h>
 //#include <Hash.h>
-#include <NeoPixelBus.h>
 #include <LibTeleinfo.h>
 #include <FS.h>
 
@@ -46,20 +45,7 @@ bool ota_blink;
 // Teleinfo
 TInfo tinfo;
 
-// RGB Led
-#ifdef RGB_LED_PIN
-//NeoPixelBus rgb_led = NeoPixelBus(1, RGB_LED_PIN, NEO_RGB | NEO_KHZ800);
-//NeoPixelBus<NeoGrbFeature, NeoEsp8266BitBang800KbpsMethod> rgb_led(1, RGB_LED_PIN);
-NeoPixelBus<NeoRgbFeature, NeoEsp8266BitBang800KbpsMethod> rgb_led(1, RGB_LED_PIN);
-#endif
-
-
-// define whole brigtness level for RGBLED (50%)
-uint8_t rgb_brightness = 50;
 // LED Blink timers
-Ticker rgb_ticker;
-Ticker blu_ticker;
-Ticker red_ticker;
 Ticker Every_1_Sec;
 Ticker Tick_emoncms;
 Ticker Tick_jeedom;
@@ -128,70 +114,6 @@ void Task_jeedom()
 {
   task_jeedom = true;
 }
-
-/* ======================================================================
-Function: LedOff 
-Purpose : callback called after led blink delay
-Input   : led (defined in term of PIN)
-Output  : - 
-Comments: -
-====================================================================== */
-void LedOff(int led)
-{
-  #ifdef BLU_LED_PIN
-  if (led==BLU_LED_PIN)
-    LedBluOFF();
-  #endif
-  if (led==RED_LED_PIN)
-    LedRedOFF();
-  if (led==RGB_LED_PIN)
-    LedRGBOFF();
-}
-
-
-// Light off the RGB LED
-#ifdef RGB_LED_PIN
-/* ======================================================================
-Function: LedRGBON
-Purpose : Light RGB Led with HSB value
-Input   : Hue (0..255)
-          Saturation (0..255)
-          Brightness (0..255)
-Output  : - 
-Comments: 
-====================================================================== */
-void LedRGBON (uint16_t hue)
-{
-  if (config.config & CFG_RGB_LED) {
-    // Convert to neoPixel API values
-    // H (is color from 0..360) should be between 0.0 and 1.0
-    // L (is brightness from 0..100) should be between 0.0 and 0.5
-    RgbColor target = HslColor( hue / 360.0f, 1.0f, rgb_brightness * 0.005f );    
-
-      // Set RGB Led
-    rgb_led.SetPixelColor(0, target); 
-    rgb_led.Show();
-  }
-}
-
-/* ======================================================================
-Function: LedRGBOFF 
-Purpose : light off the RGN LED
-Input   : -
-Output  : - 
-Comments: -
-====================================================================== */
-//void LedOff(int led)
-void LedRGBOFF(void)
-{
-  if (config.config & CFG_RGB_LED) {
-    rgb_led.SetPixelColor(0,RgbColor(0)); 
-    rgb_led.Show();
-  }
-}
-
-#endif
-
 
 /* ======================================================================
 Function: ADPSCallback 
@@ -270,15 +192,7 @@ Comments: -
 void NewFrame(ValueList * me) 
 {
   char buff[32];
-
-  // Light the RGB LED 
-  if ( config.config & CFG_RGB_LED) {
-    LedRGBON(COLOR_GREEN);
-    
-    // led off after delay
-    rgb_ticker.once_ms( (uint32_t) BLINK_LED_MS, LedOff, (int) RGB_LED_PIN);
-  }
-
+  
   sprintf_P( buff, PSTR("New Frame (%ld Bytes free)"), ESP.getFreeHeap() );
   Debugln(buff);
 }
@@ -294,14 +208,6 @@ Comments: it's called only if one data in the frame is different than
 void UpdatedFrame(ValueList * me)
 {
   char buff[32];
-  
-  // Light the RGB LED (purple)
-  if ( config.config & CFG_RGB_LED) {
-    LedRGBON(COLOR_MAGENTA);
-
-    // led off after delay
-    rgb_ticker.once_ms(BLINK_LED_MS, LedOff, RGB_LED_PIN);
-  }
 
   sprintf_P( buff, PSTR("Updated Frame (%ld Bytes free)"), ESP.getFreeHeap() );
   Debugln(buff);
@@ -369,9 +275,7 @@ void ResetConfig(void)
   config.jeedom.port = CFG_JDOM_DEFAULT_PORT;
   strcpy_P(config.jeedom.url, CFG_JDOM_DEFAULT_URL);
   //strcpy_P(config.jeedom.adco, CFG_JDOM_DEFAULT_ADCO);
-
-  config.config |= CFG_RGB_LED;
-
+  
   // save back
   saveConfig();
 }
@@ -433,6 +337,8 @@ int WifiHandleConn(boolean setup = false)
         Debug(config.psk);
         Debug(F("'..."));
         Debugflush();
+        WiFi.mode(WIFI_STA);
+        delay(500);
         WiFi.begin(config.ssid, config.psk);
       } else {
         // Open network
@@ -441,15 +347,11 @@ int WifiHandleConn(boolean setup = false)
         WiFi.begin(config.ssid);
       }
 
-      timeout = 25; // 25 * 200 ms = 5 sec time out
+      timeout = 10; // 10 * 500 ms = 10 sec time out
       // 200 ms loop
       while ( ((ret = WiFi.status()) != WL_CONNECTED) && timeout )
       {
-        // Orange LED
-        LedRGBON(COLOR_ORANGE);
-        delay(50);
-        LedRGBOFF();
-        delay(150);
+        delay(500);
         --timeout;
       }
     }
@@ -459,7 +361,7 @@ int WifiHandleConn(boolean setup = false)
     if (ret == WL_CONNECTED)
     {
       DebuglnF("connected!");
-      WiFi.mode(WIFI_STA);
+      //WiFi.mode(WIFI_STA);
 
       DebugF("IP address   : "); Debugln(WiFi.localIP());
       DebugF("MAC address  : "); Debugln(WiFi.macAddress());
@@ -474,6 +376,9 @@ int WifiHandleConn(boolean setup = false)
       // other frequencies while trying to connect, this is causing issue
       // to AP mode, so disconnect will avoid this
 
+#ifdef DEBUG
+      WiFi.printDiag(DEBUG_SERIAL);
+#endif
       // Disable auto retry search channel
       WiFi.disconnect(); 
 
@@ -512,9 +417,6 @@ int WifiHandleConn(boolean setup = false)
     // Usefull just after 1st connexion when called from setup() before
     // launching potentially buggy main()
     for (uint8_t i=0; i<= 10; i++) {
-      LedRGBON(COLOR_MAGENTA);
-      delay(100);
-      LedRGBOFF();
       delay(200);
       ArduinoOTA.handle();
     }
@@ -545,10 +447,6 @@ void setup()
   //WiFi.mode(WIFI_AP_STA);
   //WiFi.disconnect();
   //delay(1000);
-
-  // Init the RGB Led, and set it off
-  rgb_led.Begin();
-  LedRGBOFF();
 
   // Init the serial 1, Our Debug Serial TXD0
   // note this serial can only transmit, just 
@@ -592,9 +490,10 @@ void setup()
   }
   
   // Read Configuration from EEP
-  if (readConfig()) {
-      DebuglnF("Good CRC, not set!");
+  if (readConfig(false)) {
+      DebuglnF("Read config.Good CRC set!");
   } else {
+    DebuglnF("Read config false");
     // Reset Configuration
     ResetConfig();
 
@@ -607,38 +506,25 @@ void setup()
     DebuglnF("Reset to default");
   }
 
-  // We'll drive our onboard LED
-  // old TXD1, not used anymore, has been swapped
-  pinMode(RED_LED_PIN, OUTPUT); 
-  LedRedOFF();
-
   // start Wifi connect or soft AP
   WifiHandleConn(true);
 
   // OTA callbacks
   ArduinoOTA.onStart([]() { 
-    LedRGBON(COLOR_MAGENTA);
     DebuglnF("Update Started");
     ota_blink = true;
   });
 
   ArduinoOTA.onEnd([]() { 
-    LedRGBOFF();
     DebuglnF("Update finished restarting");
   });
 
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    if (ota_blink) {
-      LedRGBON(COLOR_MAGENTA);
-    } else {
-      LedRGBOFF();
-    }
     ota_blink = !ota_blink;
     //Serial.printf("Progress: %u%%\n", (progress / (total / 100)));
   });
 
   ArduinoOTA.onError([](ota_error_t error) {
-    LedRGBON(COLOR_RED);
     Debugf("Update Error[%u]: ", error);
     if (error == OTA_AUTH_ERROR) DebuglnF("Auth Failed");
     else if (error == OTA_BEGIN_ERROR) DebuglnF("Begin Failed");
@@ -687,7 +573,7 @@ void setup()
         uint32_t maxSketchSpace = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
         WiFiUDP::stopAll();
         Debugf("Update: %s\n", upload.filename.c_str());
-        LedRGBON(COLOR_MAGENTA);
+
         ota_blink = true;
 
         //start with max available size
@@ -695,11 +581,6 @@ void setup()
           Update.printError(Serial1);
 
       } else if(upload.status == UPLOAD_FILE_WRITE) {
-        if (ota_blink) {
-          LedRGBON(COLOR_MAGENTA);
-        } else {
-          LedRGBOFF();
-        }
         ota_blink = !ota_blink;
         Debug(".");
         if(Update.write(upload.buf, upload.currentSize) != upload.currentSize) 
@@ -712,11 +593,8 @@ void setup()
         else 
           Update.printError(Serial1);
 
-        LedRGBOFF();
-
       } else if(upload.status == UPLOAD_FILE_ABORTED) {
         Update.end();
-        LedRGBOFF();
         DebuglnF("Update was aborted");
       }
       delay(0);
@@ -759,9 +637,6 @@ void setup()
 
   //webSocket.begin();
   //webSocket.onEvent(webSocketEvent);
-
-  // Light off the RGB LED
-  LedRGBOFF();
 
   // Update sysinfo every second
   Every_1_Sec.attach(1, Task_1_Sec);
